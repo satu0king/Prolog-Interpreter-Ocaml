@@ -44,74 +44,73 @@ type query = Query of predicateName * argument list;;
 
 let database = [
     Rule(PredicateName("fact1"), [Constant(Atom("a"))], []);
-    Rule(PredicateName("fact1"), [Constant(Atom("b"))], [])
+    Rule(PredicateName("fact1"), [Constant(Atom("b"))], []);
+    Rule(PredicateName("fact2"), [Constant(Atom("b")); Constant(Atom("a"))], []);
+    Rule(PredicateName("fact2"), [Constant(Atom("c")); Constant(Atom("d"))], []);
+    Rule(PredicateName("fact2"), [Constant(Atom("a")); Constant(Atom("a"))], []);
+    Rule(PredicateName("fact2"), [Constant(Atom("a")); Constant(Atom("c"))], [])
     ];;
 
-let query1 = Query(PredicateName("fact1"), [Constant(Atom("b"))]);;
+let query1 = Query(PredicateName("fact1"), [Constant(Atom("a"))]);;
+let query2 = Query(PredicateName("fact2"), [Constant(Atom("a")); Variable("f")]);;
 
 let checkArgumentMatch argumentList argList =
     if List.length argumentList != List.length argList then false
     else
         let rec _checkArgumentMatch argumentList argList =
-            match argumentList with
-                [] ->true
-                | arg1::t1 ->(
-                    match argList with
-                        arg2::t2 ->(
-                            match arg1 with
-                                Constant(c1) ->(
-                                    match arg2 with
-                                        Constant(c2) -> if c1 = c2 then _checkArgumentMatch t1 t2 else false
-                                    |  _ -> _checkArgumentMatch t1 t2)
-                                | _ -> _checkArgumentMatch t1 t2
-                                )
-                                )
+            match argumentList, argList with
+                [], [] ->true
+                | arg1::t1, arg2::t2 ->(
+                    match arg1, arg2 with
+                        Constant(c1), Constant(c2) -> if c1 = c2 then _checkArgumentMatch t1 t2 else false
+                    | _, _ -> _checkArgumentMatch t1 t2 )
         in _checkArgumentMatch argumentList argList
 
     ;;
 
 
 let predicateMatch query rule=
-    match query with
-        Query(predicate, argumentList) ->
-            match rule with
-                Rule(predicateName, argList,_) ->
-                    if predicate = predicateName then checkArgumentMatch argumentList argList else false;;
+    match query, rule with
+        Query(predicate, argumentList), Rule(predicateName, argList,_) ->
+            if predicate = predicateName then checkArgumentMatch argumentList argList else false;;
 
-(* let unifyArgument queryArg predicateArg unifiedArgList env =
-    match predicateArg with
+let unifyArgument queryArg predicateArg unifiedArgList env =
+    match queryArg, predicateArg with
+      Constant(c), Constant(_) -> (queryArg::unifiedArgList, env)
+    | Constant(c), Variable(varName) ->(
+            let env = addBinding varName c env in
+                (queryArg::unifiedArgList, env)
+        )
+    | Variable(varName), Constant(c) -> (predicateArg::unifiedArgList, env)
+    | Variable(varName1), Variable(varName2) -> (predicateArg::unifiedArgList, env)
+        ;;
+
 
 
 let unify query predicate =
 
     let rec _unify  queryArgumentList predicateArgList unifiedArgList env =
-        match queryArgumentList with
-            arg1::t1 ->
-                match predicateArgList with
-                arg2::t2 ->
-                    let (unifiedArgList env) = unifyArgument arg1 arg2 unifiedArgList env in
+        match queryArgumentList, predicateArgList with
+            queryArg::t1, predicateArg::t2 ->
+                    let (unifiedArgList, env) = unifyArgument queryArg predicateArg unifiedArgList env in
                         _unify t1 t2 unifiedArgList env
     in
-        match query with
-            Query(predicate, queryArgumentList) ->
-                match predicate with
-                    Rule(predicateName, predicateArgList, _) -> *)
-
+        match query, predicate with
+            Query(predicate, queryArgumentList), Rule(predicateName, predicateArgList, _) ->
+                _unify queryArgumentList predicateArgList [] (emptyEnv());;
 
 
 let rec resolveQuery query database =
     let rec _resolveQuery _query _database =
-        match _query with
-        Query(predicate, argumentList) ->
-            match _database with
-                [] -> false
+        match _database with
+            [] -> false
             | rule::t ->
-                match rule with
-                Rule(predicateName, argList, _) ->
+                match rule, _query with
+                Rule(predicateName, argList, _), Query(predicate, argumentList) ->(
                     if predicateMatch _query rule then
                         true
                     else
-                        _resolveQuery _query t
+                        _resolveQuery _query t)
     in _resolveQuery query database;;
 
     (* match query with
