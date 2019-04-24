@@ -8,7 +8,6 @@ type argument =
 
 type predicateName = PredicateName of string;;
 
-
 (* Environment - begin *)
 type ('a, 'b) env =
     EmptyEnv
@@ -26,11 +25,26 @@ let rec apply x env =
     if x = key then value
     else (apply x env')
 
+let rec isPresent x env =
+  match env with
+    EmptyEnv -> false
+  | NonEmptyEnv((key, value), env') ->
+    if x = key then true
+    else (isPresent x env')
+
+let resolveVariableIfPossible env x =
+    match x with
+| Constant(_) -> x
+| Variable(var) ->
+    if isPresent var env then apply var env
+    else x
 
 (* Environment - end *)
 
+type query = Query of predicateName * argument list;;
+
 type predicate =
-    | Rule of predicateName * argument list * predicate list
+    | Rule of predicateName * argument list * query list
     | LessThan of argument * argument
     | GreaterThan of argument * argument
     | LessThanOrEqualTo of argument * argument
@@ -40,19 +54,20 @@ type predicate =
     | IsNot of argument * argument;;
 
 
-type query = Query of predicateName * argument list;;
+
 
 let database = [
     Rule(PredicateName("fact1"), [Constant(Atom("a"))], []);
     Rule(PredicateName("fact1"), [Constant(Atom("b"))], []);
-    Rule(PredicateName("fact2"), [Constant(Atom("b")); Constant(Atom("a"))], []);
-    Rule(PredicateName("fact2"), [Constant(Atom("c")); Constant(Atom("d"))], []);
-    Rule(PredicateName("fact2"), [Constant(Atom("a")); Constant(Atom("a"))], []);
-    Rule(PredicateName("fact2"), [Constant(Atom("a")); Constant(Atom("c"))], [])
+    Rule(PredicateName("fact2"), [Constant(Atom("a")); Constant(Atom("b"))], []);
+    Rule(PredicateName("fact2"), [Constant(Atom("b")); Constant(Atom("c"))], []);
+    Rule(PredicateName("fact2"), [Constant(Atom("d")); Constant(Atom("e"))], []);
+    Rule(PredicateName("fact2"), [Constant(Atom("f")); Constant(Atom("g"))], []);
+    Rule(PredicateName("fact3"), [Variable("A"); Variable("B")], [Query(PredicateName("fact2"), [Variable("A"); Variable("C")]); Query(PredicateName("fact2"), [Variable("C"); Variable("B")])])
     ];;
 
 let query1 = Query(PredicateName("fact1"), [Constant(Atom("a"))]);;
-let query2 = Query(PredicateName("fact2"), [Variable("s"); Variable("b")]);;
+let query2 = Query(PredicateName("fact3"), [Variable("a"); Variable("b")]);;
 
 let checkArgumentMatch argumentList argList =
     if List.length argumentList != List.length argList then false
@@ -76,9 +91,9 @@ let predicateMatch query rule=
 
 let unifyArgument queryArg predicateArg unifiedArgList env =
     match queryArg, predicateArg with
-      Constant(c), Constant(_) -> (queryArg::unifiedArgList, env)
-    | Constant(c), Variable(varName) ->(
-            let env = addBinding varName c env in
+      Constant(_), Constant(_) -> (queryArg::unifiedArgList, env)
+    | Constant(_), Variable(varName) ->(
+            let env = addBinding varName queryArg env in
                 (queryArg::unifiedArgList, env)
         )
     | Variable(varName), Constant(c) -> (predicateArg::unifiedArgList, env)
@@ -101,31 +116,48 @@ let unify query predicate =
                     in (List.rev unifiedArgList, env);;
 
 
+let rec constructQueryFromEnv query env =
+    match query with
+        Query(qName , argList) -> Query(qName, List.map (resolveVariableIfPossible env) argList)
+
+let bindQueryResultToEnv query queryResponseList env =
+    let rec _bindQueryResultToEnv argList queryResponseList env =
+        match argList, queryResponseList with
+            [], _ -> env
+        |   Constant(_)::t1, h::t2 -> _bindQueryResultToEnv t1 t2 env
+        |   Variable(varName)::t1, value::t2 -> let env = addBinding varName value env in _bindQueryResultToEnv t1 t2 env
+    in match query with
+    Query(_, argList) -> _bindQueryResultToEnv argList queryResponseList env
+        ;;
+
 let rec resolveQuery query database =
-    let rec _resolveQuery _query _database =
+    let rec resolveRule ruleQueryList env unifiedArgList =
+        match ruleQueryList with
+            [] -> (true, env)
+        |   query::t ->
+            let bindedQuery = (constructQueryFromEnv query env) in
+            let (status, queryResponseList) = _resolveQuery bindedQuery database in
+                if status = false then (status, env)
+                else
+                    let env = bindQueryResultToEnv bindedQuery queryResponseList env in
+                        resolveRule t env unifiedArgList
+        and
+     _resolveQuery _query _database =
         match _database with
             [] -> (false, [])
             | rule::t ->
                 match rule, _query with
-                Rule(predicateName, predicateArgList, _), Query(queryName, queryArgList) ->(
+                Rule(predicateName, predicateArgList, ruleQueryList), Query(queryName, queryArgList) ->(
                     if predicateMatch _query rule then
-                        let (unifiedArgList, env) = unify _query rule in (true, unifiedArgList)
+                        let (unifiedArgList, env) = unify _query rule
+                            in let (status, env) = resolveRule ruleQueryList env unifiedArgList in
+                                if status then
+                                    (status, List.map (resolveVariableIfPossible env) unifiedArgList)
+                                else _resolveQuery _query t
                     else
-                        _resolveQuery _query t)
+                        _resolveQuery _query t
+                        )
     in _resolveQuery query database;;
-
-    (* match query with
-    | Query(predicate, argumentList) ->
-            match database with
-            [] -> False
-        |   h::t ->
-            match h with
-            Rule(predicateName, argList, predList) ->
-                if predicateName = predicate and (checkPredicateMatch argumentList argList) then
-                    resolveQuery *)
-
-
-
 
 
 (* let resolvePredicate predicate =
