@@ -61,13 +61,16 @@ let database = [
     Rule(PredicateName("fact1"), [Constant(Atom("b"))], []);
     Rule(PredicateName("fact2"), [Constant(Atom("a")); Constant(Atom("b"))], []);
     Rule(PredicateName("fact2"), [Constant(Atom("b")); Constant(Atom("c"))], []);
+    Rule(PredicateName("fact2"), [Constant(Atom("c")); Constant(Atom("d"))], []);
     Rule(PredicateName("fact2"), [Constant(Atom("d")); Constant(Atom("e"))], []);
-    Rule(PredicateName("fact2"), [Constant(Atom("f")); Constant(Atom("g"))], []);
-    Rule(PredicateName("fact3"), [Variable("A"); Variable("B")], [Query(PredicateName("fact2"), [Variable("A"); Variable("C")]); Query(PredicateName("fact2"), [Variable("C"); Variable("B")])])
+    Rule(PredicateName("fact3"), [Variable("A"); Variable("B")], [Query(PredicateName("fact2"), [Variable("A"); Variable("C")]); Query(PredicateName("fact2"), [Variable("C"); Variable("B")])]);
+    Rule(PredicateName("fact4"), [Variable("A"); Variable("B")], [Query(PredicateName("fact2"), [Variable("A"); Variable("B")])]);
+    Rule(PredicateName("fact4"), [Variable("A"); Variable("B")], [Query(PredicateName("fact2"), [Variable("A"); Variable("C")]); Query(PredicateName("fact4"), [Variable("C"); Variable("B")])])
     ];;
 
-let query1 = Query(PredicateName("fact1"), [Constant(Atom("a"))]);;
-let query2 = Query(PredicateName("fact3"), [Variable("a"); Variable("b")]);;
+let query1 = Query(PredicateName("fact1"), [Constant(Atom("b"))]);;
+let query2 = Query(PredicateName("fact3"), [Constant(Atom("b")); Constant(Atom("d"))]);;
+let query3 = Query(PredicateName("fact4"), [Constant(Atom("a")); Constant(Atom("e"))]);;
 
 let checkArgumentMatch argumentList argList =
     if List.length argumentList != List.length argList then false
@@ -82,7 +85,6 @@ let checkArgumentMatch argumentList argList =
         in _checkArgumentMatch argumentList argList
 
     ;;
-
 
 let predicateMatch query rule=
     match query, rule with
@@ -151,7 +153,7 @@ let rec resolveQuery query database =
                     if predicateMatch _query rule then
                         let (unifiedArgList, env) = unify _query rule
                             in let (status, env) = resolveRule ruleQueryList env unifiedArgList in
-                                if status then
+                                if status = true then
                                     (status, List.map (resolveVariableIfPossible env) unifiedArgList)
                                 else _resolveQuery _query t
                     else
