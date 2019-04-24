@@ -52,7 +52,7 @@ let database = [
     ];;
 
 let query1 = Query(PredicateName("fact1"), [Constant(Atom("a"))]);;
-let query2 = Query(PredicateName("fact2"), [Constant(Atom("a")); Variable("f")]);;
+let query2 = Query(PredicateName("fact2"), [Variable("s"); Variable("b")]);;
 
 let checkArgumentMatch argumentList argList =
     if List.length argumentList != List.length argList then false
@@ -88,27 +88,28 @@ let unifyArgument queryArg predicateArg unifiedArgList env =
 
 
 let unify query predicate =
-
     let rec _unify  queryArgumentList predicateArgList unifiedArgList env =
         match queryArgumentList, predicateArgList with
             queryArg::t1, predicateArg::t2 ->
                     let (unifiedArgList, env) = unifyArgument queryArg predicateArg unifiedArgList env in
                         _unify t1 t2 unifiedArgList env
+                    | _,_ -> (unifiedArgList, env)
     in
         match query, predicate with
             Query(predicate, queryArgumentList), Rule(predicateName, predicateArgList, _) ->
-                _unify queryArgumentList predicateArgList [] (emptyEnv());;
+                let (unifiedArgList, env) = _unify queryArgumentList predicateArgList [] (emptyEnv())
+                    in (List.rev unifiedArgList, env);;
 
 
 let rec resolveQuery query database =
     let rec _resolveQuery _query _database =
         match _database with
-            [] -> false
+            [] -> (false, [])
             | rule::t ->
                 match rule, _query with
-                Rule(predicateName, argList, _), Query(predicate, argumentList) ->(
+                Rule(predicateName, predicateArgList, _), Query(queryName, queryArgList) ->(
                     if predicateMatch _query rule then
-                        true
+                        let (unifiedArgList, env) = unify _query rule in (true, unifiedArgList)
                     else
                         _resolveQuery _query t)
     in _resolveQuery query database;;
