@@ -5,13 +5,13 @@ let evaluate () =
         open_in Sys.argv.(1)
       else
         stdin
-    in
+     and  database = [] in
     let e1 =
       let lexbuf = Lexing.from_channel cin in
-        Parser.expr Lexer.scan lexbuf
+        Parser.predicate Lexer.scan lexbuf
     in
-    print_string (Interpreter.string_of_expr e1);
-    let result = (Interpreter.eval e1 Env.EmptyEnv) in
+        database = e1::database;
+    let database = database in
 	() (*print_string result*)
   with End_of_file -> exit 0
 

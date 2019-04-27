@@ -8,6 +8,19 @@ type argument =
 
 type predicateName = PredicateName of string;;
 
+type query = Query of predicateName * argument list;;
+
+type predicate =
+    | Rule of predicateName * argument list * query list
+    | LessThan of argument * argument
+    | GreaterThan of argument * argument
+    | LessThanOrEqualTo of argument * argument
+    | GreaterThanOrEqualTo of argument * argument
+    | Is of argument * argument
+    | Equal of argument * argument
+    | IsNot of argument * argument;;
+
+
 (* Environment - begin *)
 type ('a, 'b) env =
     EmptyEnv
@@ -40,19 +53,6 @@ let resolveVariableIfPossible env x =
     else x
 
 (* Environment - end *)
-
-type query = Query of predicateName * argument list;;
-
-type predicate =
-    | Rule of predicateName * argument list * query list
-    | LessThan of argument * argument
-    | GreaterThan of argument * argument
-    | LessThanOrEqualTo of argument * argument
-    | GreaterThanOrEqualTo of argument * argument
-    | Is of argument * argument
-    | Equal of argument * argument
-    | IsNot of argument * argument;;
-
 
 
 
