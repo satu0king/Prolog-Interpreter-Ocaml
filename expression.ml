@@ -172,3 +172,18 @@ let rec resolveQuery query database =
                         _resolveQuery _query t
                         )
     in _resolveQuery query database;;
+
+let string_of_constant c =
+    match c with
+    Integer(i) -> string_of_int i
+    | Atom(a) -> a
+
+let printResult query result =
+    let rec _printResult queryList resultList =
+        match queryList, resultList with
+            | [], [] -> ""
+            | Variable(v)::t1, Constant(c)::t2 ->" | " ^ v ^ " = " ^ (string_of_constant c) ^ (_printResult t1 t2)
+            | _::t1, _::t2 -> _printResult t1 t2
+    in
+        match query with
+        Query(_, queryList) -> _printResult queryList result

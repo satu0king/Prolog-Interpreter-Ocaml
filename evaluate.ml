@@ -31,6 +31,9 @@ let evaluate () =
     flush stdout;
     let (status, arguments) = Expression.resolveQuery query database in
         Printf.printf "\t = %s\n"  (string_of_bool status);
+        if status then
+            Printf.printf "\t = %s\n"  (Expression.printResult query arguments);
+        flush stdout;
     done
 
 let _ = evaluate ()

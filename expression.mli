@@ -32,3 +32,4 @@ type expr =
 
 
 val resolveQuery : query -> predicate list -> bool * argument list;;
+val printResult : query -> argument list -> string;;
