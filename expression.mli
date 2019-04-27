@@ -22,9 +22,13 @@
      | Equal of argument * argument
      | IsNot of argument * argument;;
 
+type database = predicate list
 
 type expr =
 | Sid        of string
 | Bid		of string
 | IntConst  of int
 | Fact of string * string list
+
+
+val resolveQuery : query -> predicate list -> bool * argument list;;

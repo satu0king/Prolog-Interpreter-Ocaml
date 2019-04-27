@@ -1,8 +1,3 @@
-mother(m,b).
-father(a,b).
-father(b,c).
-father(c,d).
+['database.pl'].
 
-END_OF_DATABASE
-
-father(a,b).
+mother(a).
