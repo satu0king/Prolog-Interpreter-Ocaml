@@ -80,7 +80,7 @@ let database = [
     Rule(PredicateName("fact4"), [Variable("A"); Variable("B")], [Query(PredicateName("fact2"), [Variable("A"); Variable("C")]); Query(PredicateName("fact4"), [Variable("C"); Variable("B")])])
     ];;
 
-let query1 = Query(PredicateName("fact1"), [Constant(Atom("b"))]);;
+let query1 = Query(PredicateName("fact1"), [Variable("X")]);;
 let query2 = Query(PredicateName("fact3"), [Constant(Atom("b")); Constant(Atom("d"))]);;
 let query3 = Query(PredicateName("fact4"), [Constant(Atom("a")); Constant(Atom("e"))]);;
 
@@ -172,6 +172,70 @@ let rec resolveQuery query database =
                         _resolveQuery _query t
                         )
     in _resolveQuery query database;;
+
+let dummyQuerySolnGenerator () =
+        let fn() = (
+            failwith "No Match";
+            (true, []);
+            )
+    in fn
+
+let rec resolveQuery query database =
+    let rec resolveRule ruleQueryList env unifiedArgList = (
+        let rule_solution_generators = Array.make (List.length ruleQueryList)
+            (_resolveQuery
+                (constructQueryFromEnv (List.hd ruleQueryList) env)
+                 database) in
+        let rule_env = Array.make (List.length ruleQueryList ) env in
+        let rule_index = ref 0 in
+        let answerGenerator() = (
+            while !rule_index != (List.length ruleQueryList) do
+                try
+                    let (status, queryResponseList) = rule_solution_generators.(!rule_index)() in (
+                        rule_env.(!rule_index) <- bindQueryResultToEnv (List.nth ruleQueryList !rule_index ) queryResponseList rule_env.(!rule_index);
+                        if !rule_index < (List.length ruleQueryList) then (
+                            rule_index:= !rule_index + 1;
+                            rule_solution_generators.(!rule_index) <-
+                                _resolveQuery (constructQueryFromEnv (List.nth ruleQueryList !rule_index) rule_env.(!rule_index-1)) database);
+
+                    )
+                with
+                    Failure(_) -> (!rule_index = !rule_index -1);
+
+                if !rule_index = -1 then
+                    failwith "No Match"
+
+                (* let (status, queryResponseList) = (_resolveQuery bindedQuery database)() in
+                    if status = false then (status, env)
+                    else
+                        let env = bindQueryResultToEnv bindedQuery queryResponseList env in
+                            resolveRule t env unifiedArgList *)
+            done;
+            (true, rule_solution_generators.(!rule_index - 1))
+        )
+        in
+        answerGenerator()
+    )
+    and _resolveQuery query database = (
+        let predicate_matches = Array.of_list( List.filter (predicateMatch query) database) and
+        predicate_index = ref (-1) in
+        let ruleSolnGenerator = ref (dummyQuerySolnGenerator()) in
+        let answerGenerator() = (
+        if !predicate_index = Array.length predicate_matches then failwith "No Match"
+        else
+        match predicate_matches.(!predicate_index), query with
+
+            
+            Rule(predicateName, predicateArgList, ruleQueryList), Query(queryName, queryArgList) ->(
+                    let (unifiedArgList, env) = unify query predicate_matches.(!predicate_index) in
+                        predicate_index:= !predicate_index+1;
+                        (true, unifiedArgList);
+                    )
+        )
+
+    in answerGenerator)
+    in
+    _resolveQuery query database;;
 
 let string_of_constant c =
     match c with
