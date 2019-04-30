@@ -1,9 +1,13 @@
-type env =
+type ('a, 'b) env =
     EmptyEnv
-  | NonEmptyEnv of (string * Expression.expr) * env
+  | NonEmptyEnv of ('a * 'b) * ('a, 'b) env
 
-val emptyEnv : unit -> env
+val emptyEnv : unit -> ('a, 'b) env
 
-val addBinding : string -> Expression.expr -> env -> env
+val addBinding : 'a -> 'b -> ('a, 'b) env -> ('a, 'b) env
 
-val apply : string -> env -> Expression.expr
+val apply : 'a -> ('a, 'b) env -> 'b
+
+val isPresent : 'a -> ('a, 'b) env -> bool
+
+val resolveVariableIfPossible : (string, Expression.argument) env -> Expression.argument -> Expression.argument

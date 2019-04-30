@@ -29,7 +29,3 @@ type expr =
 | Bid		of string
 | IntConst  of int
 | Fact of string * string list
-
-
-val resolveQuery : query -> predicate list -> bool * argument list;;
-val printResult : query -> argument list -> string;;

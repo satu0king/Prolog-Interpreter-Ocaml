@@ -29,11 +29,18 @@ let evaluate () =
     let query = Parser.interpreter_query Lexer.scan lexbuf in
     print_newline();
     flush stdout;
-    let (status, arguments) = Expression.resolveQuery query database in
-        Printf.printf "\t = %s\n"  (string_of_bool status);
-        if status then
-            Printf.printf "\t = %s\n"  (Expression.printResult query arguments);
-        flush stdout;
+    let solnGenerator = Interpreter.resolveQuery query database in
+    try while true do
+        let (status, arguments) = solnGenerator() in
+            Printf.printf "\t = %s\n"  (string_of_bool status);
+            if status then
+                Printf.printf "\t = %s\n"  (Interpreter.printResult query arguments);
+            flush stdout;
+        done
+    with Failure _ -> (
+        Printf.printf "No solution \n";
+        flush stdout
+        )
     done
 
 let _ = evaluate ()
