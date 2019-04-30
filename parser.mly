@@ -29,13 +29,13 @@ database :
 ;
 
 database_r:
-| predicate					{[$1]}
+| predicate					    {[$1]}
 | predicate database 			{$1 :: $2}
 ;
 
 predicate :
- | predicateName LPAREN argumentlist RPAREN DOT	{Expression.Rule($1, $3, [])}
- | predicateName LPAREN argumentlist RPAREN COLON rulelist DOT {Expression.Rule($1, $3, $6)}
+ | predicateName LPAREN argumentlist RPAREN DOT	                {Expression.Rule($1, $3, [])}
+ | predicateName LPAREN argumentlist RPAREN COLON rulelist DOT  {Expression.Rule($1, $3, $6)}
 ;
 
 predicateName:
@@ -44,16 +44,16 @@ predicateName:
 
 argument:
  | VARIABLE {Expression.Variable($1)}
- | value {Expression.Constant($1)}
+ | value    {Expression.Constant($1)}
 ;
 
 value :
- | STRING {Expression.Atom($1)}
- | INTEGER {Expression.Integer($1)}
+ | STRING    {Expression.Atom($1)}
+ | INTEGER   {Expression.Integer($1)}
 ;
 
 rulelist :
- | query					{[$1]}
+ | query			     		{[$1]}
  | query COMMA rulelist			{$1 :: $3}
 ;
 
@@ -71,7 +71,7 @@ filename:
 
 
 argumentlist :
- | argument					{[$1]}
+ | argument				             	{[$1]}
  | argument COMMA argumentlist			{$1 :: $3}
 ;
 %%
