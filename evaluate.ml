@@ -30,16 +30,18 @@ let evaluate () =
     print_newline();
     flush stdout;
     let solnGenerator = Interpreter.resolveQuery query database in
+    let matchFound = ref false in
     try while true do
         let (status, arguments) = solnGenerator() in
-            Printf.printf "\t = %s\n"  (string_of_bool status);
-            if status then
-                Printf.printf "\t = %s\n"  (Interpreter.printResult query arguments);
+            Printf.printf "\t = %s\n"  (Interpreter.printResult query arguments);
+            matchFound:= true;
             flush stdout;
         done
     with Failure _ -> (
-        Printf.printf "No solution \n";
-        flush stdout
+        if not !matchFound then (
+            Printf.printf "\t = No solution \n";
+            flush stdout
+        )
         )
     done
 

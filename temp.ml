@@ -1,5 +1,72 @@
 
-open Expression;;
+
+ type value =
+     | Integer of int
+     | Atom of string;;
+
+ type argument =
+     | Constant of value
+     | Variable of string;;
+
+ type predicateName = PredicateName of string;;
+
+ type query = Query of predicateName * argument list;;
+
+ type predicate =
+     | Rule of predicateName * argument list * query list
+     | LessThan of argument * argument
+     | GreaterThan of argument * argument
+     | LessThanOrEqualTo of argument * argument
+     | GreaterThanOrEqualTo of argument * argument
+     | Is of argument * argument
+     | Equal of argument * argument
+     | IsNot of argument * argument;;
+
+type database = predicate list
+
+type expr =
+| Sid        of string
+| Bid		of string
+| IntConst  of int
+| Fact of string * string list
+
+
+
+
+(* Environment - begin *)
+type ('a, 'b) env =
+    EmptyEnv
+  | NonEmptyEnv of ('a * 'b) * ('a, 'b) env
+
+let emptyEnv () = EmptyEnv
+
+let addBinding x v env =
+  NonEmptyEnv((x, v), env)
+
+let rec apply x env =
+  match env with
+    EmptyEnv -> raise Not_found
+  | NonEmptyEnv((key, value), env') ->
+    if x = key then value
+    else (apply x env')
+
+let rec isPresent x env =
+  match env with
+    EmptyEnv -> false
+  | NonEmptyEnv((key, value), env') ->
+    if x = key then true
+    else (isPresent x env')
+
+let resolveVariableIfPossible env x =
+    match x with
+| Constant(_) -> x
+| Variable(var) ->
+    if isPresent var env then apply var env
+    else x
+
+(* Environment - end *)
+
+
 
 let database = [
     Rule(PredicateName("fact1"), [Constant(Atom("a"))], []);
@@ -40,12 +107,14 @@ let unifyArgument queryArg predicateArg unifiedArgList env =
     match queryArg, predicateArg with
       Constant(_), Constant(_) -> (queryArg::unifiedArgList, env)
     | Constant(_), Variable(varName) ->(
-            let env = Env.addBinding varName queryArg env in
+            let env = addBinding varName queryArg env in
                 (queryArg::unifiedArgList, env)
         )
     | Variable(varName), Constant(c) -> (predicateArg::unifiedArgList, env)
     | Variable(varName1), Variable(varName2) -> (predicateArg::unifiedArgList, env)
         ;;
+
+
 
 let unify query predicate =
     let rec _unify  queryArgumentList predicateArgList unifiedArgList env =
@@ -57,27 +126,57 @@ let unify query predicate =
     in
         match query, predicate with
             Query(predicate, queryArgumentList), Rule(predicateName, predicateArgList, _) ->
-                let (unifiedArgList, env) = _unify queryArgumentList predicateArgList [] (Env.emptyEnv())
+                let (unifiedArgList, env) = _unify queryArgumentList predicateArgList [] (emptyEnv())
                     in (List.rev unifiedArgList, env);;
+
 
 let rec constructQueryFromEnv query env =
     match query with
-        Query(qName , argList) -> Query(qName, List.map (Env.resolveVariableIfPossible env) argList)
+        Query(qName , argList) -> Query(qName, List.map (resolveVariableIfPossible env) argList)
 
 let bindQueryResultToEnv query queryResponseList env =
     let rec _bindQueryResultToEnv argList queryResponseList env =
         match argList, queryResponseList with
             [], _ -> env
         |   Constant(_)::t1, h::t2 -> _bindQueryResultToEnv t1 t2 env
-        |   Variable(varName)::t1, value::t2 -> let env = Env.addBinding varName value env in _bindQueryResultToEnv t1 t2 env
+        |   Variable(varName)::t1, value::t2 -> let env = addBinding varName value env in _bindQueryResultToEnv t1 t2 env
     in match query with
     Query(_, argList) -> _bindQueryResultToEnv argList queryResponseList env
         ;;
 
+let rec resolveQuery query database =
+    let rec resolveRule ruleQueryList env unifiedArgList =
+        match ruleQueryList with
+            [] -> (true, env)
+        |   query::t ->
+            let bindedQuery = (constructQueryFromEnv query env) in
+            let (status, queryResponseList) = _resolveQuery bindedQuery database in
+                if status = false then (status, env)
+                else
+                    let env = bindQueryResultToEnv bindedQuery queryResponseList env in
+                        resolveRule t env unifiedArgList
+        and
+     _resolveQuery _query _database =
+        match _database with
+            [] -> (false, [])
+            | rule::t ->
+                match rule, _query with
+                Rule(predicateName, predicateArgList, ruleQueryList), Query(queryName, queryArgList) ->(
+                    if predicateMatch _query rule then
+                        let (unifiedArgList, env) = unify _query rule
+                            in let (status, env) = resolveRule ruleQueryList env unifiedArgList in
+                                if status = true then
+                                    (status, List.map (resolveVariableIfPossible env) unifiedArgList)
+                                else _resolveQuery _query t
+                    else
+                        _resolveQuery _query t
+                        )
+    in _resolveQuery query database;;
+
 let dummyQuerySolnGenerator () =
         let fn() = (
             failwith "No Match";
-            (true, (Env.emptyEnv()));
+            (true, (emptyEnv()));
             )
     in fn
 
@@ -138,7 +237,7 @@ let rec resolveQuery query database =
         else
 
         let matchFound = ref false in
-        let soln = ref (false, Env.emptyEnv()) in
+        let soln = ref (false, emptyEnv()) in
         (
         while not !matchFound do
                 try
@@ -164,9 +263,16 @@ let rec resolveQuery query database =
 
             if !predicate_index = Array.length predicate_matches then failwith "No Match";
 
-            (true, List.map (Env.resolveVariableIfPossible (snd !soln)) !unifiedList)
+            (true, List.map (resolveVariableIfPossible (snd !soln)) !unifiedList)
         )
+        (* match predicate_matches.(!predicate_index), query with
 
+
+            Rule(predicateName, predicateArgList, ruleQueryList), Query(queryName, queryArgList) ->(
+                    let (unifiedArgList, env) = unify query predicate_matches.(!predicate_index) in
+                        predicate_index:= !predicate_index+1;
+                        (true, unifiedArgList);
+                    ) *)
         )
 
     in answerGenerator)
@@ -181,10 +287,9 @@ let string_of_constant c =
 let printResult query result =
     let rec _printResult queryList resultList =
         match queryList, resultList with
-            | [], [] -> []
-            | Variable(v)::t1, Constant(c)::t2 -> (v ^ " = " ^ (string_of_constant c) ):: (_printResult t1 t2)
+            | [], [] -> ""
+            | Variable(v)::t1, Constant(c)::t2 ->" | " ^ v ^ " = " ^ (string_of_constant c) ^ (_printResult t1 t2)
             | _::t1, _::t2 -> _printResult t1 t2
     in
         match query with
-         Query(_, queryList) -> let result = _printResult queryList result in
-            if List.length result = 0 then  "True" else String.concat ", " result;;
+        Query(_, queryList) -> _printResult queryList result

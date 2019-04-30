@@ -1,3 +1,1 @@
 ['database.pl'].
-
-mother(a).

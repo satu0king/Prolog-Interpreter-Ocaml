@@ -35,6 +35,7 @@ database_r:
 
 predicate :
  | predicateName LPAREN argumentlist RPAREN DOT	{Expression.Rule($1, $3, [])}
+ | predicateName LPAREN argumentlist RPAREN COLON rulelist DOT {Expression.Rule($1, $3, $6)}
 ;
 
 predicateName:
