@@ -9,3 +9,5 @@ val query : Expression.expr -> Env.env ->  string *)
 val resolveQuery : Expression.query -> Expression.predicate list -> unit -> bool * Expression.argument list;;
 val printResult : Expression.query -> Expression.argument list -> string;;
 val dummyQuerySolnGenerator : unit -> unit -> bool * ('a, 'b) Env.env;;
+
+val containsVarible: Expression.query -> bool;;

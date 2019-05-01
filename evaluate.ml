@@ -39,7 +39,9 @@ let evaluate () =
         done
     with Failure _ -> (
         if not !matchFound then (
-            Printf.printf "\t = No solution \n";
+            Printf.printf (if Interpreter.containsVarible query then
+                 "\t = No solution \n"
+            else  "\t = False \n");
             flush stdout
         )
         )

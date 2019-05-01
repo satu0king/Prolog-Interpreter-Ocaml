@@ -188,3 +188,14 @@ let printResult query result =
         match query with
          Query(_, queryList) -> let result = _printResult queryList result in
             if List.length result = 0 then  "True" else String.concat ", " result;;
+
+let containsVarible query =
+    match query with
+        Query(_, argList) ->
+            let rec _containsVarible argList =
+                match argList with
+                    [] -> false
+                    | Variable(_)::t -> true
+                    | Constant(_)::t->_containsVarible t
+            in
+                _containsVarible argList;;
